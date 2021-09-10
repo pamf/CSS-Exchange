@@ -6,6 +6,10 @@ Function Test-ExchangeADSetupLevel {
 
     # Extract for Pester Testing - Start
     Function TestPrepareAD {
+        param(
+            [string]$ExchangeVersion
+        )
+        $schemaUpdateRequired = $latestExchangeVersion.$ExchangeVersion.UpperRange -ne $currentSchemaValue
         $netDom = netdom query fsmo
         $params = @{
             TestName = "Prepare AD Requirements"
@@ -45,14 +49,17 @@ Function Test-ExchangeADSetupLevel {
             $runPrepareAD = "/PrepareAD needs to be run from a computer in domain '$smDomain' and site '$smSite'"
         }
 
+        if ($runPrepareAD) { $runPrepareAD += ". Must be in Schema Admins Group" }
+
         $details = @(
-            "Schema Master:        $schemaMaster",
-            "Schema Master Domain: $smDomain",
-            "Schema Master Site:   $smSite",
-            "---------------------------------------",
-            "Local Server:         $serverFQDN",
-            "Local Server Domain:  $serverDomain",
-            "Local Server Site:    $localSite")
+            "Schema Update Required: $schemaUpdateRequired"
+            "Schema Master:          $schemaMaster",
+            "Schema Master Domain:   $smDomain",
+            "Schema Master Site:     $smSite",
+            "-----------------------------------------",
+            "Local Server:           $serverFQDN",
+            "Local Server Domain:    $serverDomain",
+            "Local Server Site:      $localSite")
 
         New-TestResult @params -Details $details -ReferenceInfo $runPrepareAD
     }
@@ -70,7 +77,7 @@ Function Test-ExchangeADSetupLevel {
         New-TestResult @params -Details ("DN Value: $($ADSetupLevel.Org.DN) Version: $($ADSetupLevel.Org.Value)`n`n" +
             "DN Value: $($ADSetupLevel.Schema.DN) Version: $($ADSetupLevel.Schema.Value)`n`n" +
             "DN Value: $($ADSetupLevel.MESO.DN) Version: $($ADSetupLevel.MESO.Value)")
-        TestPrepareAD
+        TestPrepareAD -ExchangeVersion $ExchangeVersion
     }
 
     Function TestReadyLevel {
@@ -90,7 +97,7 @@ Function Test-ExchangeADSetupLevel {
 
         New-TestResult @params
         if ($result -eq "Failed") {
-            TestPrepareAD
+            TestPrepareAD -ExchangeVersion $ExchangeVersion
         }
     }
 
@@ -149,6 +156,7 @@ Function Test-ExchangeADSetupLevel {
 
     $adLevel = GetExchangeADSetupLevel
     $testName = "Exchange AD Latest Level"
+    $currentSchemaValue = $adLevel.Schema.Value
 
     #Less than the known Exchange 2013 schema version
     if ($adLevel.Schema.Value -lt 15137) {

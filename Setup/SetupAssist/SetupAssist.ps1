@@ -29,7 +29,11 @@ param(
 
 
 Function RunAllTests {
-    Test-UserGroupMemberOf
+    $result = Test-ExchangeADSetupLevel
+    $result
+    $prepareAD = $result | Where-Object { $_.TestName -eq "Prepare AD Requirements" }
+    $prepareSchema = $null -ne $prepareAD -and $prepareAD.ReferenceInfo -like "*Schema Admins Group*"
+    Test-UserGroupMemberOf -PrepareAdRequired ($null -ne $prepareAD) -PrepareSchemaRequired $prepareSchema
     Test-ExecutionPolicy
     Test-ExchangeServices
     Test-ComputersContainerExists
@@ -39,7 +43,6 @@ Function RunAllTests {
     Test-PrerequisiteInstalled
     Test-ReadOnlyDomainControllerLocation
     Test-OtherWellKnownObjects
-    Test-ExchangeADSetupLevel
     Test-PendingReboot
     Test-ValidHomeMDB
     Test-VirtualDirectoryConfiguration
